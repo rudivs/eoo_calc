@@ -10,9 +10,9 @@ from osgeo import ogr,osr
 
 def CalculateArea(poly):
 	"""Takes a polygon in WGS84 geographic coords as input and calculates the 
-	area by intersecting it with the four UTM zones covering South Africa, 
-	applying the appropriate projection and summing the resulting areas.
-	Returns area as a float.
+	area by intersecting it with the six UTM zones covering Africa south of 
+	the equator, applying the appropriate projection and summing the resulting
+    areas. Returns area as a float.
 	"""
 
 	area = float(0)  #initialise area aggregator
@@ -24,6 +24,11 @@ def CalculateArea(poly):
 	# [4] add area of polygon to cumulative total
 	
 	i = ogr.Geometry(ogr.wkbPolygon)   # [1]
+    
+	i = poly.Intersection(utm32s)      # [2]
+	i.Transform(transUTM32s)           # [3]
+	area += i.GetArea()                # [4]
+    
 	i = poly.Intersection(utm33s)      # [2]
 	i.Transform(transUTM33s)           # [3]
 	area += i.GetArea()                # [4]
@@ -39,6 +44,10 @@ def CalculateArea(poly):
 	i = poly.Intersection(utm36s)
 	i.Transform(transUTM36s)
 	area += i.GetArea()
+    
+	i = poly.Intersection(utm37s)
+	i.Transform(transUTM37s)
+	area += i.GetArea()    
 	
 	return area/1000000
 
@@ -51,20 +60,41 @@ def CalculateArea(poly):
 
 srWGS84 = osr.SpatialReference()		                     # [5]
 srWGS84.ImportFromProj4('+proj=longlat +datum=WGS84')        # [6]
+
+srUTM32s = osr.SpatialReference()
+srUTM32s.ImportFromEPSG(32732)                               # [7]
+transUTM32s = osr.CoordinateTransformation(srWGS84,srUTM32s) # [8]
+
 srUTM33s = osr.SpatialReference()
 srUTM33s.ImportFromEPSG(32733)                               # [7]
 transUTM33s = osr.CoordinateTransformation(srWGS84,srUTM33s) # [8]
+
 srUTM34s = osr.SpatialReference()
 srUTM34s.ImportFromEPSG(32734)
 transUTM34s = osr.CoordinateTransformation(srWGS84,srUTM34s)
+
 srUTM35s = osr.SpatialReference()
 srUTM35s.ImportFromEPSG(32735)
 transUTM35s = osr.CoordinateTransformation(srWGS84,srUTM35s)
+
 srUTM36s = osr.SpatialReference()
 srUTM36s.ImportFromEPSG(32736)
 transUTM36s = osr.CoordinateTransformation(srWGS84,srUTM36s)
 
+srUTM37s = osr.SpatialReference()
+srUTM37s.ImportFromEPSG(32737)
+transUTM37s = osr.CoordinateTransformation(srWGS84,srUTM37s)
+
 #Create utm geometries
+ring = ogr.Geometry(ogr.wkbLinearRing) # create ring instance
+ring.AddPoint(6,0)                    # add points to ring
+ring.AddPoint(6,-80)
+ring.AddPoint(12,-80)
+ring.AddPoint(12,0)
+ring.AddPoint(6,0)                    # last point closes ring
+utm32s = ogr.Geometry(ogr.wkbPolygon)  # create polygon instance
+utm32s.AddGeometry(ring)               # add ring to polygon
+
 ring = ogr.Geometry(ogr.wkbLinearRing) # create ring instance
 ring.AddPoint(12,0)                    # add points to ring
 ring.AddPoint(12,-80)
@@ -100,6 +130,15 @@ ring.AddPoint(36,0)
 ring.AddPoint(30,0)
 utm36s = ogr.Geometry(ogr.wkbPolygon)
 utm36s.AddGeometry(ring)
+
+ring = ogr.Geometry(ogr.wkbLinearRing)
+ring.AddPoint(36,0)
+ring.AddPoint(36,-80)
+ring.AddPoint(42,-80)
+ring.AddPoint(42,0)
+ring.AddPoint(36,0)
+utm37s = ogr.Geometry(ogr.wkbPolygon)
+utm37s.AddGeometry(ring)
 
 hist = []               # coords of all historical localities
 cmax = []               # coords of possibly extant sites (current maximum)
